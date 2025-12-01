@@ -21,8 +21,9 @@ const Configure = ({ isOpen, onClose, useRag, llm, similarityMetric, setConfigur
   if (!isOpen) return null;
 
   const llmOptions = [
-    { label: 'GPT 3.5 Turbo', value: 'gpt-3.5-turbo' },
-    { label: 'GPT 4', value: 'gpt-4' }
+    { label: 'Llama 4 Maverick 17B', value: 'Llama-4-Maverick-17B-128E-Instruct-FP8' },
+    { label: 'Llama 3.3 70B', value: 'Llama3.3-70B-Instruct' },
+    { label: 'Llama 3.1 405B', value: 'Llama3.1-405B-Instruct' }
   ];
 
   const similarityMetricOptions = [

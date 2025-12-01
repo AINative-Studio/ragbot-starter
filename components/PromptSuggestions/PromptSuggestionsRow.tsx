@@ -2,10 +2,10 @@ import PromptSuggestionButton from "./PromptSuggestionButton";
 
 const PromptSuggestionRow = ({ onPromptClick }) => {
   const prompts = [
-    'How does similarity search work with a Vector DB?',
-    'What is DataStax Enterprise?',
-    'How does CassIO work?',
-    'What are some common FAQs about Astra?',
+    'How does ZeroDB embeddings API work?',
+    'What is the embed-and-store endpoint?',
+    'How do I use Meta Llama for chat completions?',
+    'How do I build a RAG system with ZeroDB?',
   ];
 
   return (

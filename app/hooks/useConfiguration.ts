@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 
 export type SimilarityMetric = "cosine" | "euclidean" | "dot_product";
 
+// Valid Meta Llama models
+const VALID_LLAMA_MODELS = [
+  'Llama-4-Maverick-17B-128E-Instruct-FP8',
+  'Llama3.3-70B-Instruct',
+  'Llama3.1-405B-Instruct'
+];
+
+const DEFAULT_LLAMA_MODEL = 'Llama-4-Maverick-17B-128E-Instruct-FP8';
+
 const useConfiguration = () => {
   // Safely get values from localStorage
   const getLocalStorageValue = (key: string, defaultValue: any) => {
@@ -16,8 +25,25 @@ const useConfiguration = () => {
     return defaultValue;
   };
 
+  // Validate and migrate LLM model selection
+  const getValidatedLlm = () => {
+    const storedLlm = getLocalStorageValue('llm', DEFAULT_LLAMA_MODEL);
+
+    // If stored model is not a valid Meta Llama model, migrate to default
+    if (!VALID_LLAMA_MODELS.includes(storedLlm)) {
+      console.warn(`Invalid model "${storedLlm}" found in localStorage. Migrating to ${DEFAULT_LLAMA_MODEL}`);
+      // Update localStorage immediately to prevent repeated warnings
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('llm', DEFAULT_LLAMA_MODEL);
+      }
+      return DEFAULT_LLAMA_MODEL;
+    }
+
+    return storedLlm;
+  };
+
   const [useRag, setUseRag] = useState<boolean>(() => getLocalStorageValue('useRag', 'true') === 'true');
-  const [llm, setLlm] = useState<string>(() => getLocalStorageValue('llm', 'gpt-3.5-turbo'));
+  const [llm, setLlm] = useState<string>(() => getValidatedLlm());
   const [similarityMetric, setSimilarityMetric] = useState<SimilarityMetric>(
     () => getLocalStorageValue('similarityMetric', 'cosine') as SimilarityMetric
   );
