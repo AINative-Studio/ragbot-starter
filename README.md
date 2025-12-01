@@ -616,8 +616,6 @@ Now that you have a working RAG chatbot, explore:
 - 🎨 **Custom UI** - Build your own chat interface
 - 📱 **Mobile App** - Extend to iOS/Android with React Native
 
-Check out our [examples directory](./examples) for inspiration!
-
 ---
 
 ## ⭐ Show Your Support
