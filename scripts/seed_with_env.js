@@ -1,0 +1,149 @@
+require('dotenv').config();
+const https = require('https');
+
+const ZERODB_API_URL = process.env.ZERODB_API_URL;
+const ZERODB_PROJECT_ID = process.env.ZERODB_PROJECT_ID;
+const ZERODB_EMAIL = process.env.ZERODB_EMAIL;
+const ZERODB_PASSWORD = process.env.ZERODB_PASSWORD;
+
+console.log('🧹 Clean Re-seed: ONLY Transmutes Data\n');
+console.log(`   API: ${ZERODB_API_URL}`);
+console.log(`   Project ID: ${ZERODB_PROJECT_ID}`);
+console.log(`   Namespace: transmutes_only (clean)\n`);
+
+// Helper to make HTTPS requests
+function makeRequest(url, options, data) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          resolve(body);
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(60000, () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+async function authenticate() {
+  console.log('🔐 Authenticating with ZeroDB...');
+
+  const authData = new URLSearchParams({
+    username: ZERODB_EMAIL,
+    password: ZERODB_PASSWORD
+  }).toString();
+
+  const response = await makeRequest(
+    `${ZERODB_API_URL}/v1/public/auth/login`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(authData)
+      }
+    },
+    authData
+  );
+
+  if (!response.access_token) {
+    throw new Error(`Authentication failed: ${JSON.stringify(response)}`);
+  }
+
+  console.log('✅ Authentication successful\n');
+  return response.access_token;
+}
+
+async function uploadBatch(token, documents) {
+  const payload = JSON.stringify({
+    documents,
+    namespace: 'transmutes_only',
+    upsert: true
+  });
+
+  const response = await makeRequest(
+    `${ZERODB_API_URL}/v1/public/${ZERODB_PROJECT_ID}/embeddings/embed-and-store`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    },
+    payload
+  );
+
+  return response;
+}
+
+async function main() {
+  try {
+    const token = await authenticate();
+
+    // Load sample data
+    const sampleData = require('./sample_data.json');
+    console.log(`📊 Total documents to upload: ${sampleData.length}\n`);
+
+    const BATCH_SIZE = 5;
+    let uploaded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < sampleData.length; i += BATCH_SIZE) {
+      const batch = sampleData.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+
+      console.log(`📤 Batch ${batchNum}: Uploading documents ${i}-${i + batch.length - 1}...`);
+
+      const documents = batch.map((item, idx) => ({
+        id: `transmutes_${i + idx}`,
+        text: `${item.title}\n\n${item.content}`,
+        metadata: {
+          title: item.title,
+          url: item.url,
+          source: 'transmutes_rag',
+          data_file: 'sample_data.json'
+        }
+      }));
+
+      try {
+        const response = await uploadBatch(token, documents);
+
+        if (response.success) {
+          uploaded += response.vectors_stored;
+          console.log(`   ✅ Stored ${response.vectors_stored} vectors (Total: ${uploaded}/${sampleData.length})`);
+        } else {
+          failed += batch.length;
+          console.log(`   ❌ Batch failed: ${JSON.stringify(response)}`);
+        }
+      } catch (error) {
+        failed += batch.length;
+        console.log(`   ❌ Batch error: ${error.message}`);
+      }
+
+      // Small delay between batches
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    console.log('\n🎉 Seeding complete!');
+    console.log(`   ✅ Uploaded: ${uploaded}`);
+    console.log(`   ❌ Failed: ${failed}`);
+    console.log(`   📊 Total: ${sampleData.length}`);
+  } catch (error) {
+    console.error('❌ Seeding failed:', error.message);
+    process.exit(1);
+  }
+}
+
+main();

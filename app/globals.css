@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Bank Gothic Font */
+@font-face {
+  font-family: 'Bank Gothic';
+  src: url('/fonts/BankGothicMedium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --text-primary: #FFFFFF;
   --text-primary-inverse: #090909;
@@ -219,4 +228,130 @@ body {
 
 .vercel-link hr {
   border-color: var(--border-primary);
+}
+/* Modern Message Bubble Styles */
+.chatbot-message-bg {
+  background-color: var(--background-bubble-secondary);
+}
+
+.chatbot-prose {
+  color: #1f2937 !important; /* Force dark gray text for readability */
+}
+
+.chatbot-prose p,
+.chatbot-prose h1,
+.chatbot-prose h2,
+.chatbot-prose h3,
+.chatbot-prose li,
+.chatbot-prose blockquote {
+  color: #1f2937 !important; /* Ensure all text elements are dark */
+}
+
+.chatbot-prose code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Code block override for dark theme */
+.dark .chatbot-prose code:not([class*="language-"]) {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ec4899;
+}
+
+/* Enhanced Animations for Glass Morphism UI */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes ping-slow {
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.animate-ping-slow {
+  animation: ping-slow 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Glass Morphism Utility Classes */
+.glass-effect {
+  @apply backdrop-blur-xl bg-white/60 dark:bg-slate-900/60 border border-emerald-200/50 dark:border-slate-700/50;
+}
+
+.glass-bubble {
+  @apply backdrop-blur-xl bg-white/70 dark:bg-slate-800/70 border border-emerald-200/50 dark:border-slate-700/50 shadow-xl;
+}
+
+/* Gradient Text */
+.gradient-text {
+  @apply bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent;
 }
