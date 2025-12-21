@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" fill="none">
+  <!-- Gear 1 (Left, Larger) -->
+  <path d="M35 25 L38 20 L42 20 L45 25 L50 25 L50 30 L55 33 L55 37 L50 40 L50 45 L45 45 L42 50 L38 50 L35 45 L30 45 L30 40 L25 37 L25 33 L30 30 L30 25 Z" fill="#F6A135" stroke="#F6A135" stroke-width="2"/>
+  <circle cx="40" cy="35" r="8" fill="transparent" stroke="#F6A135" stroke-width="3"/>
+
+  <!-- Gear 2 (Top Right, Medium) -->
+  <path d="M58 8 L60 5 L63 5 L65 8 L68 8 L68 11 L71 13 L71 16 L68 18 L68 21 L65 21 L63 24 L60 24 L58 21 L55 21 L55 18 L52 16 L52 13 L55 11 L55 8 Z" fill="#F6A135" stroke="#F6A135" stroke-width="1.5"/>
+  <circle cx="61.5" cy="14.5" r="5" fill="transparent" stroke="#F6A135" stroke-width="2"/>
+
+  <!-- Gear 3 (Bottom Right, Medium) -->
+  <path d="M65 35 L67 32 L70 32 L72 35 L75 35 L75 38 L78 40 L78 43 L75 45 L75 48 L72 48 L70 51 L67 51 L65 48 L62 48 L62 45 L59 43 L59 40 L62 38 L62 35 Z" fill="#F6A135" stroke="#F6A135" stroke-width="1.5"/>
+  <circle cx="68.5" cy="41.5" r="5" fill="transparent" stroke="#F6A135" stroke-width="2"/>
+
+  <!-- Text: TRANSMUTES.AI -->
+  <text x="95" y="35" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="2">TRANSMUTES.AI</text>
+</svg>
