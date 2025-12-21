@@ -182,7 +182,7 @@ export async function POST(req: Request) {
 
     // Append sources if RAG was used - using special delimiter for frontend parsing
     if (useRag && sources.length > 0) {
-      const uniqueSources = [...new Set(sources)]; // Remove duplicates
+      const uniqueSources = Array.from(new Set(sources)); // Remove duplicates
       console.log('Unique sources:', uniqueSources);
 
       if (uniqueSources.length > 0) {

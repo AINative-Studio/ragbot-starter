@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--dns-result-order=ipv4first' next dev",
-    "build": "next build && npm run seed",
+    "build": "next build",
+    "build:with-seed": "next build && npm run seed",
     "start": "next start",
     "seed": "NODE_OPTIONS='--dns-result-order=ipv4first' ts-node ./scripts/populateDb.ts",
     "lint": "next lint",
@@ -13,7 +14,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@ainative/sdk": "file:../core/developer-tools/sdks/typescript",
+    "@ainative/sdk": "^1.0.2",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^20.8.10",
     "@types/react-syntax-highlighter": "^15.5.13",
