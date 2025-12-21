@@ -1,29 +1,23 @@
 // Using node-fetch for Meta Llama API calls (avoiding OpenAI SDK undici timeout issues)
 import nodeFetch from 'node-fetch';
+import { pipeline } from '@xenova/transformers';
 
 // Note: Using node-fetch directly instead of OpenAI SDK to avoid undici timeout issues
 
 const ZERODB_API_URL = process.env.ZERODB_API_URL!;
 const ZERODB_PROJECT_ID = process.env.ZERODB_PROJECT_ID!;
-const ZERODB_EMAIL = process.env.ZERODB_EMAIL!;
-const ZERODB_PASSWORD = process.env.ZERODB_PASSWORD!;
+const ZERODB_API_KEY = process.env.ZERODB_API_KEY!;
+const ZERODB_NAMESPACE = process.env.ZERODB_NAMESPACE || 'transmutes_only';
+const ZERODB_TOP_K = parseInt(process.env.ZERODB_TOP_K || '5');
+const ZERODB_SIMILARITY_THRESHOLD = parseFloat(process.env.ZERODB_SIMILARITY_THRESHOLD || '0.7');
 
-// Get JWT token from ZeroDB
-async function getAuthToken(): Promise<string> {
-  const response = await fetch(`${ZERODB_API_URL}/v1/public/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `username=${encodeURIComponent(ZERODB_EMAIL)}&password=${encodeURIComponent(ZERODB_PASSWORD)}`
-  });
-
-  if (!response.ok) {
-    throw new Error(`Authentication failed: ${response.status}`);
+// Initialize embedding model (384-dim)
+let embedder: any = null;
+async function getEmbedder() {
+  if (!embedder) {
+    embedder = await pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5');
   }
-
-  const data = await response.json();
-  return data.access_token;
+  return embedder;
 }
 
 export async function POST(req: Request) {
@@ -33,60 +27,115 @@ export async function POST(req: Request) {
     const latestMessage = messages[messages?.length - 1]?.content;
 
     let docContext = '';
+    let sources: string[] = [];
     if (useRag) {
-      // Get JWT token for ZeroDB authentication
-      const token = await getAuthToken();
+      console.log('🔮 Generating query embedding locally (384-dim)...');
+      // Generate embedding for query using local model
+      const embeddingModel = await getEmbedder();
+      const output = await embeddingModel(latestMessage, { pooling: 'mean', normalize: true });
+      const queryVector = Array.from(output.data);
+      console.log(`✅ Generated ${queryVector.length}-dim embedding`);
 
-      // Use ZeroDB's semantic search endpoint with built-in embeddings API
-      // ZeroDB automatically generates embeddings from the query using BAAI/bge-small-en-v1.5
-      // No need for separate embedding service!
-      const searchResponse = await fetch(`${ZERODB_API_URL}/v1/public/${ZERODB_PROJECT_ID}/embeddings/search`, {
+      console.log('🔍 Searching ZeroDB knowledge base...');
+      // Search using direct vector search endpoint
+      const searchResponse = await nodeFetch(`${ZERODB_API_URL}/v1/public/${ZERODB_PROJECT_ID}/database/vectors/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'X-API-Key': ZERODB_API_KEY,
         },
         body: JSON.stringify({
-          query: latestMessage,
-          project_id: ZERODB_PROJECT_ID,
-          limit: 5,
-          threshold: 0.7,
-          namespace: "knowledge_base",
-          filter_metadata: { similarity_metric: similarityMetric },
-          model: "BAAI/bge-small-en-v1.5" // Free HuggingFace embeddings
+          query_vector: queryVector,
+          limit: ZERODB_TOP_K,
+          threshold: ZERODB_SIMILARITY_THRESHOLD,
+          namespace: ZERODB_NAMESPACE,
+          filter_metadata: similarityMetric ? { similarity_metric: similarityMetric } : undefined
         })
       });
 
       if (!searchResponse.ok) {
         const error = await searchResponse.text();
-        throw new Error(`ZeroDB search failed: ${searchResponse.status} - ${error}`);
+        console.error(`❌ ZeroDB search failed: ${searchResponse.status} - ${error}`);
+        // NO GRACEFUL DEGRADATION - Return error to user
+        return new Response(
+          JSON.stringify({
+            error: 'Knowledge base unavailable. I can only answer questions based on spiritual wisdom teachings from my knowledge base. Please try again in a moment.'
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
       }
 
       const searchResults = await searchResponse.json();
-      const documents = searchResults.results || [];
+      const documents = searchResults.vectors || [];
+      console.log(`✅ Found ${documents.length} relevant documents`);
+
+      // Debug: log first document structure
+      if (documents.length > 0) {
+        console.log('Sample document structure:', JSON.stringify(documents[0], null, 2).substring(0, 500));
+      }
+
+      if (documents.length === 0) {
+        // NO GRACEFUL DEGRADATION - If no documents found, inform user
+        return new Response(
+          "I apologize, but I couldn't find any relevant teachings in my knowledge base to answer your question. My responses are based solely on the spiritual wisdom teachings I have access to. Please try rephrasing your question or ask about topics related to meditation, self-inquiry, consciousness, or spiritual practice.",
+          {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' }
+          }
+        );
+      }
+
+      // Extract sources - show top 3-5 most relevant
+      sources = documents.slice(0, 5).map((doc: any, idx: number) => {
+        // Try to get title from metadata first
+        const metadataTitle = doc.metadata?.title || doc.metadata?.source || doc.metadata?.name;
+        if (metadataTitle) return metadataTitle;
+
+        const text = doc.document || doc.text || '';
+        const lines = text.split('\n').filter((l: string) => l.trim().length > 0);
+
+        // Find the first meaningful line (skip separators and very short lines)
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.length > 15 && trimmed !== '---' && !trimmed.startsWith('http')) {
+            return trimmed.length > 50 ? trimmed.substring(0, 50) + '...' : trimmed;
+          }
+        }
+
+        return `Source ${idx + 1}`;
+      });
 
       docContext = `
         START CONTEXT
-        ${documents.map((doc: any) => doc.text || doc.document || '').join("\n")}
+        ${documents.map((doc: any) => doc.document || doc.text || '').join("\n\n---\n\n")}
         END CONTEXT
-      `
+      `;
     }
 
     const ragPrompt = [
       {
         role: 'system',
-        content: `You are an AI assistant for AINative Studio, helping users understand ZeroDB and our AI infrastructure services. Format responses using markdown where applicable.
+        content: `You are a wise spiritual guide helping seekers explore ancient wisdom and enlightenment teachings. Format responses using markdown where applicable.
 
-        You specialize in:
-        - ZeroDB: Our managed vector database with built-in embeddings API
-        - Embeddings API: Free HuggingFace-based embeddings (BAAI/bge-small-en-v1.5, 384 dimensions)
-        - Meta Llama integration: How to use Llama models for chat completions
-        - RAG (Retrieval-Augmented Generation) systems
-        - Authentication with JWT tokens
+        CRITICAL INSTRUCTION: You MUST ONLY use the wisdom provided in the context below. DO NOT use any knowledge outside of the provided context. Your responses must be based exclusively on the teachings contained between START CONTEXT and END CONTEXT.
 
         ${docContext}
 
-        If the answer is not provided in the context, say "I don't have that information in my knowledge base, but I can help you find it in the ZeroDB documentation."
+        Guidelines for Responses:
+        - Base ALL responses on the provided context only - this is non-negotiable
+        - Feel free to paraphrase, synthesize, and present the teachings in your own words
+        - Combine insights from multiple sources in the context to create comprehensive answers
+        - Draw connections between related teachings to provide deeper understanding
+        - Use a compassionate, contemplative tone that honors these spiritual traditions
+        - Format responses with markdown for clarity and readability
+        - Make each response unique by presenting the wisdom in different ways while staying true to the source material
+        - If appropriate, use metaphors or examples that are already present in the context
+        - You can present the same teaching in different ways depending on how the question is asked
+
+        IMPORTANT: Paraphrasing and synthesis are encouraged, but you must NEVER introduce concepts, ideas, or knowledge that don't exist in the context above. Every insight you share must be traceable back to the provided teachings.
       `,
       },
     ]
@@ -129,7 +178,18 @@ export async function POST(req: Request) {
     }
 
     const data = await apiResponse.json();
-    const content = data.choices[0]?.message?.content || '';
+    let content = data.choices[0]?.message?.content || '';
+
+    // Append sources if RAG was used - using special delimiter for frontend parsing
+    if (useRag && sources.length > 0) {
+      const uniqueSources = Array.from(new Set(sources)); // Remove duplicates
+      console.log('Unique sources:', uniqueSources);
+
+      if (uniqueSources.length > 0) {
+        // Add sources as JSON after a special delimiter
+        content += `\n\n___SOURCES___\n${JSON.stringify(uniqueSources.slice(0, 5))}`;
+      }
+    }
 
     return new Response(content, {
       headers: { 'Content-Type': 'text/plain' },
