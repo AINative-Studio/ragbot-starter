@@ -50,7 +50,8 @@ export default function useConversations() {
   }, [currentConversationId]);
 
   const createNewConversation = (): string => {
-    const newId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Use crypto.randomUUID() for ZeroDB Memory API compatibility
+    const newId = crypto.randomUUID();
     const newConversation: Conversation = {
       id: newId,
       title: 'New Conversation',

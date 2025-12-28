@@ -104,10 +104,10 @@ const Sidebar = ({
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No conversations yet</p>
                 ) : (
                   conversations.map((conv) => (
-                    <button
+                    <div
                       key={conv.id}
                       onClick={() => onLoadConversation(conv.id)}
-                      className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-200 group backdrop-blur-sm border ${
+                      className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-200 group backdrop-blur-sm border cursor-pointer ${
                         currentConversationId === conv.id
                           ? 'bg-gradient-to-r from-[#F6A135]/20 to-[#00A3A1]/20 border-[#F6A135]/50 dark:border-[#F6A135]/50'
                           : 'hover:bg-white/80 dark:hover:bg-slate-700/60 border-transparent hover:border-[#00A3A1]/30'
@@ -127,7 +127,10 @@ const Sidebar = ({
                           </p>
                         </div>
                         <button
-                          onClick={(e) => onDeleteConversation(conv.id, e)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent triggering the parent div click
+                            onDeleteConversation(conv.id, e);
+                          }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded backdrop-blur-sm hover:bg-[#F6A135]/20 border border-[#F6A135]/20"
                           title="Delete conversation"
                         >
@@ -136,7 +139,7 @@ const Sidebar = ({
                           </svg>
                         </button>
                       </div>
-                    </button>
+                    </div>
                   ))
                 )}
               </div>

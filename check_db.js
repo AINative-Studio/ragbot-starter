@@ -68,6 +68,7 @@ async function main() {
 
   console.log('🔍 Search 1: "ZeroDB documentation API"');
   const r1 = await search(token, "ZeroDB documentation API");
+  console.log('Raw response:', JSON.stringify(r1, null, 2));
   if (r1.results) {
     r1.results.forEach((r, i) => {
       const title = r.metadata && r.metadata.title ? r.metadata.title : 'No title';

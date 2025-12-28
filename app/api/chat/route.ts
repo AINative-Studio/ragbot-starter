@@ -1,8 +1,8 @@
 // Using node-fetch for Meta Llama API calls (avoiding OpenAI SDK undici timeout issues)
 import nodeFetch from 'node-fetch';
-import { pipeline } from '@xenova/transformers';
 
 // Note: Using node-fetch directly instead of OpenAI SDK to avoid undici timeout issues
+// Note: Using ZeroDB's embedding API instead of loading transformers locally (to avoid Netlify timeout)
 
 const ZERODB_API_URL = process.env.ZERODB_API_URL!;
 const ZERODB_PROJECT_ID = process.env.ZERODB_PROJECT_ID!;
@@ -11,14 +11,7 @@ const ZERODB_NAMESPACE = process.env.ZERODB_NAMESPACE || 'transmutes_only';
 const ZERODB_TOP_K = parseInt(process.env.ZERODB_TOP_K || '5');
 const ZERODB_SIMILARITY_THRESHOLD = parseFloat(process.env.ZERODB_SIMILARITY_THRESHOLD || '0.7');
 
-// Initialize embedding model (384-dim)
-let embedder: any = null;
-async function getEmbedder() {
-  if (!embedder) {
-    embedder = await pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5');
-  }
-  return embedder;
-}
+// Removed generateEmbedding function - using semantic search directly instead
 
 export async function POST(req: Request) {
   try {
@@ -29,27 +22,20 @@ export async function POST(req: Request) {
     let docContext = '';
     let sources: string[] = [];
     if (useRag) {
-      console.log('🔮 Generating query embedding locally (384-dim)...');
-      // Generate embedding for query using local model
-      const embeddingModel = await getEmbedder();
-      const output = await embeddingModel(latestMessage, { pooling: 'mean', normalize: true });
-      const queryVector = Array.from(output.data);
-      console.log(`✅ Generated ${queryVector.length}-dim embedding`);
-
-      console.log('🔍 Searching ZeroDB knowledge base...');
-      // Search using direct vector search endpoint
-      const searchResponse = await nodeFetch(`${ZERODB_API_URL}/v1/public/${ZERODB_PROJECT_ID}/database/vectors/search`, {
+      console.log('🔍 Searching ZeroDB knowledge base with semantic search...');
+      // Use semantic search endpoint (handles embedding generation automatically)
+      const searchResponse = await nodeFetch(`${ZERODB_API_URL}/v1/public/${ZERODB_PROJECT_ID}/embeddings/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': ZERODB_API_KEY,
         },
         body: JSON.stringify({
-          query_vector: queryVector,
-          limit: ZERODB_TOP_K,
-          threshold: ZERODB_SIMILARITY_THRESHOLD,
+          query: latestMessage,
+          limit: ZERODB_TOP_K,  // Correct parameter name per API docs
+          threshold: ZERODB_SIMILARITY_THRESHOLD,  // Correct parameter name per API docs
           namespace: ZERODB_NAMESPACE,
-          filter_metadata: similarityMetric ? { similarity_metric: similarityMetric } : undefined
+          model: 'BAAI/bge-small-en-v1.5'  // Specify model explicitly
         })
       });
 
@@ -69,7 +55,7 @@ export async function POST(req: Request) {
       }
 
       const searchResults = await searchResponse.json();
-      const documents = searchResults.vectors || [];
+      const documents = searchResults.results || searchResults.vectors || [];
       console.log(`✅ Found ${documents.length} relevant documents`);
 
       // Debug: log first document structure
@@ -91,10 +77,10 @@ export async function POST(req: Request) {
       // Extract sources - show top 3-5 most relevant
       sources = documents.slice(0, 5).map((doc: any, idx: number) => {
         // Try to get title from metadata first
-        const metadataTitle = doc.metadata?.title || doc.metadata?.source || doc.metadata?.name;
+        const metadataTitle = doc.vector_metadata?.title || doc.vector_metadata?.source || doc.vector_metadata?.name;
         if (metadataTitle) return metadataTitle;
 
-        const text = doc.document || doc.text || '';
+        const text = doc.document || '';  // API returns 'document' field
         const lines = text.split('\n').filter((l: string) => l.trim().length > 0);
 
         // Find the first meaningful line (skip separators and very short lines)
@@ -110,7 +96,7 @@ export async function POST(req: Request) {
 
       docContext = `
         START CONTEXT
-        ${documents.map((doc: any) => doc.document || doc.text || '').join("\n\n---\n\n")}
+        ${documents.map((doc: any) => doc.document || '').join("\n\n---\n\n")}
         END CONTEXT
       `;
     }
@@ -194,8 +180,17 @@ export async function POST(req: Request) {
     return new Response(content, {
       headers: { 'Content-Type': 'text/plain' },
     });
-  } catch (e) {
-    console.error('Meta Llama API Error:', e);
-    throw e;
+  } catch (e: any) {
+    console.error('API Error:', e);
+    return new Response(
+      JSON.stringify({
+        error: e.message || 'Internal server error',
+        details: e.toString()
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 }

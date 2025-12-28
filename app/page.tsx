@@ -1,6 +1,7 @@
 "use client";
 import {useEffect, useRef, useState} from 'react';
 import Bubble from '../components/Bubble'
+import LoadingBubble from '../components/LoadingBubble'
 import { useChat, Message } from 'ai/react';
 import Footer from '../components/Footer';
 import Configure from '../components/Configure';
@@ -12,7 +13,7 @@ import useConversations from './hooks/useConversations';
 
 
 export default function Home() {
-  const { append, messages, input, handleInputChange, handleSubmit, setMessages } = useChat();
+  const { append, messages, input, handleInputChange, handleSubmit, setMessages, isLoading } = useChat();
   const { useRag, llm, similarityMetric, setConfiguration } = useConfiguration();
   const {
     currentConversationId,
@@ -128,16 +129,27 @@ export default function Home() {
                 <h1 className="text-2xl font-bold text-[#F6A135]" style={{ fontFamily: 'Bank Gothic, sans-serif', letterSpacing: '0.05em' }}>TRANSMUTES</h1>
               </div>
             </div>
-            <div className='flex gap-2'>
-              <ThemeButton />
-              <button
-                onClick={() => setConfigureOpen(true)}
-                className='p-2 rounded-lg backdrop-blur-sm bg-[#F6A135]/10 hover:bg-[#F6A135]/20 border border-[#F6A135]/20 transition-all duration-200'
-              >
-                <svg width="20" height="20" viewBox="0 0 24 25" fill="currentColor" className="text-[#F6A135]">
-                  <path d="M19.14 13.4006C19.18 13.1006 19.2 12.7906 19.2 12.4606C19.2 12.1406 19.18 11.8206 19.13 11.5206L21.16 9.94057C21.34 9.80057 21.39 9.53057 21.28 9.33057L19.36 6.01057C19.24 5.79057 18.99 5.72057 18.77 5.79057L16.38 6.75057C15.88 6.37057 15.35 6.05057 14.76 5.81057L14.4 3.27057C14.36 3.03057 14.16 2.86057 13.92 2.86057H10.08C9.83999 2.86057 9.64999 3.03057 9.60999 3.27057L9.24999 5.81057C8.65999 6.05057 8.11999 6.38057 7.62999 6.75057L5.23999 5.79057C5.01999 5.71057 4.76999 5.79057 4.64999 6.01057L2.73999 9.33057C2.61999 9.54057 2.65999 9.80057 2.85999 9.94057L4.88999 11.5206C4.83999 11.8206 4.79999 12.1506 4.79999 12.4606C4.79999 12.7706 4.81999 13.1006 4.86999 13.4006L2.83999 14.9806C2.65999 15.1206 2.60999 15.3906 2.71999 15.5906L4.63999 18.9106C4.75999 19.1306 5.00999 19.2006 5.22999 19.1306L7.61999 18.1706C8.11999 18.5506 8.64999 18.8706 9.23999 19.1106L9.59999 21.6506C9.64999 21.8906 9.83999 22.0606 10.08 22.0606H13.92C14.16 22.0606 14.36 21.8906 14.39 21.6506L14.75 19.1106C15.34 18.8706 15.88 18.5506 16.37 18.1706L18.76 19.1306C18.98 19.2106 19.23 19.1306 19.35 18.9106L21.27 15.5906C21.39 15.3706 21.34 15.1206 21.15 14.9806L19.14 13.4006ZM12 16.0606C10.02 16.0606 8.39999 14.4406 8.39999 12.4606C8.39999 10.4806 10.02 8.86057 12 8.86057C13.98 8.86057 15.6 10.4806 15.6 12.4606C15.6 14.4406 13.98 16.0606 12 16.0606Z" />
-                </svg>
-              </button>
+            <div className='flex items-center gap-4'>
+              {/* Powered by text - hidden on mobile */}
+              <div className='hidden md:flex flex-col items-end text-right'>
+                <span className='text-xs font-bold text-[#F6A135]' style={{ fontFamily: 'Bank Gothic, sans-serif', letterSpacing: '0.05em' }}>
+                  POWERED BY
+                </span>
+                <span className='text-xs font-bold text-[#F6A135]' style={{ fontFamily: 'Bank Gothic, sans-serif', letterSpacing: '0.05em' }}>
+                  AINATIVE STUDIO + ZERODB + META LLAMA
+                </span>
+              </div>
+              <div className='flex gap-2'>
+                <ThemeButton />
+                <button
+                  onClick={() => setConfigureOpen(true)}
+                  className='p-2 rounded-lg backdrop-blur-sm bg-[#F6A135]/10 hover:bg-[#F6A135]/20 border border-[#F6A135]/20 transition-all duration-200'
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 25" fill="currentColor" className="text-[#F6A135]">
+                    <path d="M19.14 13.4006C19.18 13.1006 19.2 12.7906 19.2 12.4606C19.2 12.1406 19.18 11.8206 19.13 11.5206L21.16 9.94057C21.34 9.80057 21.39 9.53057 21.28 9.33057L19.36 6.01057C19.24 5.79057 18.99 5.72057 18.77 5.79057L16.38 6.75057C15.88 6.37057 15.35 6.05057 14.76 5.81057L14.4 3.27057C14.36 3.03057 14.16 2.86057 13.92 2.86057H10.08C9.83999 2.86057 9.64999 3.03057 9.60999 3.27057L9.24999 5.81057C8.65999 6.05057 8.11999 6.38057 7.62999 6.75057L5.23999 5.79057C5.01999 5.71057 4.76999 5.79057 4.64999 6.01057L2.73999 9.33057C2.61999 9.54057 2.65999 9.80057 2.85999 9.94057L4.88999 11.5206C4.83999 11.8206 4.79999 12.1506 4.79999 12.4606C4.79999 12.7706 4.81999 13.1006 4.86999 13.4006L2.83999 14.9806C2.65999 15.1206 2.60999 15.3906 2.71999 15.5906L4.63999 18.9106C4.75999 19.1306 5.00999 19.2006 5.22999 19.1306L7.61999 18.1706C8.11999 18.5506 8.64999 18.8706 9.23999 19.1106L9.59999 21.6506C9.64999 21.8906 9.83999 22.0606 10.08 22.0606H13.92C14.16 22.0606 14.36 21.8906 14.39 21.6506L14.75 19.1106C15.34 18.8706 15.88 18.5506 16.37 18.1706L18.76 19.1306C18.98 19.2106 19.23 19.1306 19.35 18.9106L21.27 15.5906C21.39 15.3706 21.34 15.1206 21.15 14.9806L19.14 13.4006ZM12 16.0606C10.02 16.0606 8.39999 14.4406 8.39999 12.4606C8.39999 10.4806 10.02 8.86057 12 8.86057C13.98 8.86057 15.6 10.4806 15.6 12.4606C15.6 14.4406 13.98 16.0606 12 16.0606Z" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -150,9 +162,12 @@ export default function Home() {
                 <p className='text-gray-700 dark:text-gray-400 text-center max-w-md'>Explore ancient teachings from enlightened masters. Ask about consciousness, meditation, self-inquiry, and the nature of reality.</p>
               </div>
             ) : (
-              messages.map((message, index) => (
-                <Bubble ref={messagesEndRef} key={`message-${index}`} content={message} />
-              ))
+              <>
+                {messages.map((message, index) => (
+                  <Bubble ref={messagesEndRef} key={`message-${index}`} content={message} />
+                ))}
+                {isLoading && <LoadingBubble />}
+              </>
             )}
           </div>
         </div>
@@ -169,13 +184,14 @@ export default function Home() {
                 <input
                   onChange={handleInputChange}
                   value={input}
-                  className='w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white dark:bg-slate-800 border-2 border-[#F6A135]/30 dark:border-[#F6A135]/30 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#F6A135] dark:focus:ring-[#F6A135] focus:border-[#F6A135] dark:focus:border-[#F6A135] shadow-lg transition-all duration-200'
+                  disabled={isLoading}
+                  className='w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white dark:bg-slate-800 border-2 border-[#F6A135]/30 dark:border-[#F6A135]/30 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#F6A135] dark:focus:ring-[#F6A135] focus:border-[#F6A135] dark:focus:border-[#F6A135] shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
                   placeholder='Ask about consciousness, meditation, or wisdom teachings...'
                 />
               </div>
               <button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isLoading}
                 className='px-5 py-3 rounded-xl backdrop-blur-xl bg-[#F6A135]/90 hover:bg-[#F6A135] text-white font-medium shadow-lg shadow-[#F6A135]/30 hover:shadow-xl hover:shadow-[#F6A135]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-[1.02] flex items-center gap-2 border border-[#F6A135]/20'
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
